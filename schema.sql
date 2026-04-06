@@ -1,0 +1,96 @@
+-- SFU Food Pantry Management System
+-- CMPT 354 Group 5 - Schema
+
+CREATE TABLE IF NOT EXISTS DONOR (
+    DonorID INT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    Email VARCHAR(255) UNIQUE,
+    Phone VARCHAR(20),
+    DonorType VARCHAR(30)
+);
+
+CREATE TABLE IF NOT EXISTS CATEGORY (
+    CategoryID INT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL UNIQUE,
+    Description VARCHAR(255),
+    IsEssential BOOLEAN
+);
+
+CREATE TABLE IF NOT EXISTS USER_ACCOUNT (
+    UserID INT PRIMARY KEY,
+    Username VARCHAR(50) NOT NULL UNIQUE,
+    Role VARCHAR(30),
+    IsActive BOOLEAN
+);
+
+CREATE TABLE IF NOT EXISTS VISITOR (
+    VisitorID INT PRIMARY KEY,
+    VisitorType VARCHAR(30),
+    Email VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS FOOD_ITEM (
+    ItemID INT PRIMARY KEY,
+    CategoryID INT,
+    Name VARCHAR(100) NOT NULL,
+    Unit VARCHAR(20),
+    ReorderThreshold INT CHECK (ReorderThreshold >= 0),
+    IsActive BOOLEAN,
+    FOREIGN KEY (CategoryID) REFERENCES CATEGORY(CategoryID)
+);
+
+CREATE TABLE IF NOT EXISTS DONATION (
+    DonationID INT PRIMARY KEY,
+    DonorID INT,
+    DonatedAt TIMESTAMP NOT NULL,
+    Notes VARCHAR(255),
+    FOREIGN KEY (DonorID) REFERENCES DONOR(DonorID)
+);
+
+CREATE TABLE IF NOT EXISTS PANTRY_VISIT (
+    VisitID INT PRIMARY KEY,
+    VisitorID INT,
+    UserID INT,
+    CheckInAt TIMESTAMP NOT NULL,
+    Notes VARCHAR(255),
+    FOREIGN KEY (VisitorID) REFERENCES VISITOR(VisitorID),
+    FOREIGN KEY (UserID) REFERENCES USER_ACCOUNT(UserID)
+);
+
+CREATE TABLE IF NOT EXISTS DONATION_ITEM (
+    DonationID INT,
+    LineNo INT,
+    ItemID INT,
+    UserID INT,
+    QtyDonated INT CHECK (QtyDonated > 0),
+    ExpiryDate DATE,
+    PRIMARY KEY (DonationID, LineNo),
+    FOREIGN KEY (DonationID) REFERENCES DONATION(DonationID),
+    FOREIGN KEY (ItemID) REFERENCES FOOD_ITEM(ItemID),
+    FOREIGN KEY (UserID) REFERENCES USER_ACCOUNT(UserID)
+);
+
+CREATE TABLE IF NOT EXISTS INVENTORY_BATCH (
+    ItemID INT,
+    BatchNo INT,
+    DonationID INT,
+    LineNo INT,
+    ReceivedAt TIMESTAMP,
+    ExpiryDate DATE,
+    QtyReceived INT CHECK (QtyReceived > 0),
+    QtyAvailable INT CHECK (QtyAvailable >= 0),
+    StorageLocation VARCHAR(50),
+    PRIMARY KEY (ItemID, BatchNo),
+    FOREIGN KEY (ItemID) REFERENCES FOOD_ITEM(ItemID),
+    FOREIGN KEY (DonationID, LineNo) REFERENCES DONATION_ITEM(DonationID, LineNo)
+);
+
+CREATE TABLE IF NOT EXISTS DISTRIBUTES (
+    VisitID INT,
+    ItemID INT,
+    BatchNo INT,
+    QtyDistributed INT CHECK (QtyDistributed > 0),
+    PRIMARY KEY (VisitID, ItemID, BatchNo),
+    FOREIGN KEY (VisitID) REFERENCES PANTRY_VISIT(VisitID),
+    FOREIGN KEY (ItemID, BatchNo) REFERENCES INVENTORY_BATCH(ItemID, BatchNo)
+);
