@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - SFU Food Pantry Management{% endblock %}
+
+{% block content %}
+<div class="error-page">
+    <div class="error-container">
+        <div class="error-code error-code-500">500</div>
+        <h1>Server Error</h1>
+        <p class="error-description">Sorry, something went wrong on our end. Our team has been notified and is working to fix it.</p>
+        
+        <div class="error-actions">
+            <a href="{{ url_for('index') }}" class="btn btn-primary">
+                <i class="fas fa-home"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.error-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 70px - 200px);
+    padding: 40px 20px;
+}
+
+.error-container {
+    text-align: center;
+    background: white;
+    border-radius: 12px;
+    padding: 60px 40px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    max-width: 500px;
+    width: 100%;
+}
+
+.error-code {
+    font-size: 5rem;
+    font-weight: bold;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 20px;
+}
+
+.error-code-500 {
+    background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.error-page h1 {
+    color: #2c3e50;
+    font-size: 2rem;
+    margin-bottom: 15px;
+}
+
+.error-description {
+    color: #95a5a6;
+    font-size: 1.1rem;
+    margin-bottom: 30px;
+}
+
+.error-actions {
+    margin-top: 40px;
+}
+</style>
+{% endblock %}

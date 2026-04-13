@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Visits - SFU Food Pantry Management{% endblock %}
+
+{% block content %}
+<div class="visits-page">
+    <div class="page-header">
+        <h1>Pantry Visits</h1>
+        <p class="subtitle">Register and manage visitor check-ins</p>
+    </div>
+
+    <div class="content-grid">
+        <!-- Register New Visit Form -->
+        <div class="form-section">
+            <h2>Register New Visit</h2>
+            <form method="POST" action="{{ url_for('add_visit') }}" class="visit-form">
+                <div class="form-group">
+                    <label for="visitor_type">Visitor Type *</label>
+                    <select id="visitor_type" name="visitor_type" required class="form-control">
+                        <option value="">-- Select Type --</option>
+                        <option value="Student">Student</option>
+                        <option value="Community">Community Member</option>
+                        <option value="Staff">Staff</option>
+                        <option value="Faculty">Faculty</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="visitor_email">Email Address</label>
+                    <input type="email" id="visitor_email" name="visitor_email" class="form-control" 
+                           placeholder="visitor@email.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="staff_id">Staff Member on Duty *</label>
+                    <div class="input-group">
+                        <select id="staff_id" name="staff_id" required class="form-control">
+                            <option value="">-- Select Staff --</option>
+                            {% for staff in staff %}
+                            <option value="{{ staff.UserID }}">{{ staff.Username }}</option>
+                            {% endfor %}
+                            <option value="new">+ Add New Staff</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="newStaffBtn" onclick="showNewStaffModal()" style="display:none;">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" class="form-control" rows="4" 
+                             placeholder="Any special notes about this visitor..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-user-check"></i> Check In Visitor
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Visits List -->
+        <div class="list-section">
+            <h2>Recent Visits</h2>
+            
+            {% if visits %}
+            <div class="visits-list">
+                {% for visit in visits %}
+                <div class="visit-card">
+                    <div class="visit-header">
+                        <div class="visitor-info">
+                            <h3>
+                                <i class="fas fa-user-circle"></i>
+                                {{ visit.VisitorType }}
+                            </h3>
+                            {% if visit.Email %}
+                            <p class="visitor-email">
+                                <i class="fas fa-envelope"></i>
+                                {{ visit.Email }}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="visit-meta">
+                            <div class="visit-time">
+                                <i class="fas fa-clock"></i>
+                                {{ visit.CheckInAt.strftime('%H:%M') }}
+                            </div>
+                            <div class="visit-date">
+                                {{ visit.CheckInAt.strftime('%B %d, %Y') }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="visit-details-row">
+                        <span class="detail-item">
+                            <strong>Staff:</strong> {{ visit.StaffName or 'N/A' }}
+                        </span>
+                        <span class="detail-item">
+                            <strong>Items Received:</strong> 
+                            <span class="badge">{{ visit.ItemsReceived }} {{ 'item' if visit.ItemsReceived == 1 else 'items' }}</span>
+                        </span>
+                    </div>
+
+                    {% if visit.Notes %}
+                    <div class="visit-notes">
+                        <strong>Notes:</strong> {{ visit.Notes }}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="pagination-info">
+                <p>Showing latest visits - <a href="#" onclick="loadMoreVisits()">Load More</a></p>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-users"></i>
+                <h3>No visits recorded yet</h3>
+                <p>Start by registering your first visitor above.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.visits-page {
+    padding: 30px 0;
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+@media (max-width: 1024px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-section, .list-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.form-section h2, .list-section h2 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-actions {
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
+}
+
+.btn-lg {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    width: 100%;
+}
+
+.visits-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.visit-card {
+    background: #f8f9fa;
+    border-left: 5px solid #f093fb;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s;
+}
+
+.visit-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.visit-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.visitor-info h3 {
+    margin: 0 0 8px 0;
+    color: #2c3e50;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.visitor-email {
+    margin: 0;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.visit-meta {
+    text-align: right;
+}
+
+.visit-time {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 5px;
+}
+
+.visit-date {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.visit-details-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+}
+
+.detail-item {
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.detail-item strong {
+    color: #2c3e50;
+}
+
+.badge {
+    display: inline-block;
+    background: #667eea;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-left: 5px;
+}
+
+.visit-notes {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.pagination-info {
+    text-align: center;
+    padding-top: 20px;
+    color: #7f8c8d;
+}
+
+.pagination-info a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.pagination-info a:hover {
+    text-decoration: underline;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #95a5a6;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: #bdc3c7;
+    margin-bottom: 15px;
+}
+
+.empty-state h3 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.visit-card {
+    animation: slideIn 0.3s ease-out;
+}
+</style>
+
+<script>
+function loadMoreVisits() {
+    // This would typically load more visits via AJAX
+    alert('Loading more visits...');
+}
+
+// New Staff Modal Functions
+function showNewStaffModal() {
+    document.getElementById('newStaffModal').style.display = 'block';
+}
+
+function closeNewStaffModal() {
+    document.getElementById('newStaffModal').style.display = 'none';
+    document.getElementById('newStaffForm').reset();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle Staff dropdown change
+    const staffSelect = document.getElementById('staff_id');
+    if (staffSelect) {
+        staffSelect.addEventListener('change', function() {
+            if (this.value === 'new') {
+                showNewStaffModal();
+                this.value = '';
+            }
+        });
+    }
+
+    // Handle New Staff Form Submission
+    const newStaffForm = document.getElementById('newStaffForm');
+    if (newStaffForm) {
+        newStaffForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch('/api/add_staff', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Add new staff to dropdown
+                    const newOption = document.createElement('option');
+                    newOption.value = data.user_id;
+                    newOption.textContent = data.username;
+                    
+                    const staffSelect = document.getElementById('staff_id');
+                    staffSelect.insertBefore(newOption, staffSelect.querySelector('option[value="new"]'));
+                    staffSelect.value = data.user_id;
+                    
+                    closeNewStaffModal();
+                    alert('Staff member added successfully!');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error adding staff member');
+            });
+        });
+    }
+});
+
+// Close modal when clicking outside
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('newStaffModal');
+    if (e.target === modal) {
+        closeNewStaffModal();
+    }
+});
+</script>
+
+<!-- New Staff Modal -->
+<div id="newStaffModal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Add New Staff Member</h3>
+            <button type="button" class="close" onclick="closeNewStaffModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="newStaffForm">
+                <div class="form-group">
+                    <label for="newStaffUsername">Username *</label>
+                    <input type="text" id="newStaffUsername" name="username" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="newStaffRole">Role *</label>
+                    <select id="newStaffRole" name="role" class="form-control" required>
+                        <option value="">-- Select Role --</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Staff">Staff</option>
+                        <option value="Volunteer">Volunteer</option>
+                    </select>
+                </div>
+                <div class="form-actions" style="margin-top: 20px;">
+                    <button type="submit" class="btn btn-primary">Add Staff</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeNewStaffModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

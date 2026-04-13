@@ -1,0 +1,507 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - SFU Food Pantry Management{% endblock %}
+
+{% block content %}
+<div class="reports-page">
+    <div class="page-header">
+        <h1>Reports & Analytics</h1>
+        <p class="subtitle">Insights and metrics for pantry management</p>
+    </div>
+
+    <!-- Reports Grid -->
+    <div class="reports-grid">
+        <!-- Donations by Type -->
+        <div class="report-card">
+            <div class="report-header">
+                <h3>Donations by Type</h3>
+                <i class="fas fa-gift"></i>
+            </div>
+            <div class="report-content">
+                {% if donations_by_type %}
+                <div class="report-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Donor Type</th>
+                                <th>Donations</th>
+                                <th>Total Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for donation in donations_by_type %}
+                            <tr>
+                                <td>
+                                    <span class="type-badge">{{ donation.DonorType }}</span>
+                                </td>
+                                <td>{{ donation.DonationCount }}</td>
+                                <td>
+                                    <strong>{{ donation.TotalQty or 0 }}</strong> units
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="no-data">No donation data available</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Expiring Items -->
+        <div class="report-card">
+            <div class="report-header">
+                <h3>Items Expiring Soon</h3>
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="report-content">
+                {% if expiring_items %}
+                <div class="alert-list">
+                    {% for item in expiring_items %}
+                    <div class="alert-item">
+                        <div class="item-name">{{ item.Name }}</div>
+                        <div class="item-details">
+                            <span class="qty-info">{{ item.QtyAvailable }} units</span>
+                            <span class="location-info">{{ item.StorageLocation }}</span>
+                        </div>
+                        <div class="expiry-warning">
+                            <i class="fas fa-clock"></i>
+                            {% set days_left = (item.ExpiryDate - datetime.now().date()).days %}
+                            {% if days_left < 0 %}
+                                <strong>EXPIRED</strong>
+                            {% elif days_left == 0 %}
+                                <strong>EXPIRES TODAY</strong>
+                            {% else %}
+                                Expires in {{ days_left }} days
+                            {% endif %}
+                            <br/>
+                            <small>{{ item.ExpiryDate.strftime('%Y-%m-%d') }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="no-data">No items expiring soon</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Top Items Distributed -->
+        <div class="report-card">
+            <div class="report-header">
+                <h3>Top Items Distributed</h3>
+                <i class="fas fa-arrow-right"></i>
+            </div>
+            <div class="report-content">
+                {% if top_items %}
+                <div class="chart-list">
+                    {% set max_qty = top_items[0].TotalDistributed if top_items else 1 %}
+                    {% for item in top_items %}
+                    <div class="chart-item">
+                        <div class="chart-label">
+                            <span class="label-name">{{ item.Name }}</span>
+                            <span class="label-value">{{ item.TotalDistributed }} units</span>
+                        </div>
+                        <div class="chart-bar">
+                            <div class="bar-fill" style="width: {{ (item.TotalDistributed / max_qty * 100)|int }}%"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="no-data">No distribution data available</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Visitor Statistics -->
+        <div class="report-card">
+            <div class="report-header">
+                <h3>Visitor Activity (Last 30 Days)</h3>
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="report-content">
+                {% if visitor_stats %}
+                <div class="stats-list">
+                    {% for stat in visitor_stats %}
+                    <div class="stat-row">
+                        <span class="stat-date">{{ stat.VisitDate.strftime('%b %d') }}</span>
+                        <div class="stat-bar">
+                            <div class="bar-fill" style="background: linear-gradient(90deg, #f093fb, #f5576c); width: {% set total_visits = visitor_stats[0].VisitorCount if visitor_stats else 1 %}{{ (stat.VisitorCount / total_visits * 100)|int }}%"></div>
+                        </div>
+                        <span class="stat-value">{{ stat.VisitorCount }} visits</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="no-data">No visitor data available</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="summary-section">
+        <h2>System Summary</h2>
+        <div class="summary-cards">
+            <div class="summary-card">
+                <div class="summary-stat">
+                    <span class="stat-number">{{ donations_by_type|length }}</span>
+                    <span class="stat-label">Donor Categories</span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-stat">
+                    <span class="stat-number">{{ expiring_items|length }}</span>
+                    <span class="stat-label">Items to Review</span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-stat">
+                    <span class="stat-number">{{ visitor_stats|length }}</span>
+                    <span class="stat-label">Days with Visits</span>
+                </div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-stat">
+                    <span class="stat-number">{{ top_items|length }}</span>
+                    <span class="stat-label">Items Tracked</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Section -->
+    <div class="export-section">
+        <h3>Export Reports</h3>
+        <div class="export-buttons">
+            <button class="btn btn-export" onclick="exportReport('pdf')">
+                <i class="fas fa-file-pdf"></i> Export as PDF
+            </button>
+            <button class="btn btn-export" onclick="exportReport('csv')">
+                <i class="fas fa-file-csv"></i> Export as CSV
+            </button>
+            <button class="btn btn-export" onclick="window.print()">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+.reports-page {
+    padding: 30px 0;
+}
+
+.reports-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
+
+@media (max-width: 1024px) {
+    .reports-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.report-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s;
+}
+
+.report-card:hover {
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.12);
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.report-header h3 {
+    color: #2c3e50;
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.report-header i {
+    font-size: 1.5rem;
+    color: #667eea;
+    opacity: 0.6;
+}
+
+.report-table {
+    overflow-x: auto;
+}
+
+.report-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.report-table thead {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.report-table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.report-table td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+    color: #555;
+}
+
+.report-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.type-badge {
+    display: inline-block;
+    background: #e7f3ff;
+    color: #0066cc;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.no-data {
+    text-align: center;
+    color: #95a5a6;
+    padding: 20px;
+}
+
+.alert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.alert-item {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.item-name {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.item-details {
+    display: flex;
+    gap: 15px;
+    font-size: 0.85rem;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.qty-info, .location-info {
+    display: flex;
+    align-items: center;
+}
+
+.expiry-warning {
+    color: #721c24;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.chart-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.chart-item {
+    margin-bottom: 10px;
+}
+
+.chart-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.label-name {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.label-value {
+    color: #667eea;
+    font-weight: 600;
+}
+
+.chart-bar {
+    background: #f0f0f0;
+    height: 24px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.3s ease;
+}
+
+.stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stat-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.stat-date {
+    min-width: 60px;
+    color: #666;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.stat-bar {
+    flex: 1;
+    background: #f0f0f0;
+    height: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.stat-value {
+    min-width: 80px;
+    text-align: right;
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.summary-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.summary-section h2 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.summary-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    line-height: 1;
+    margin-bottom: 10px;
+}
+
+.stat-label {
+    font-size: 0.95rem;
+    opacity: 0.9;
+}
+
+.export-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    text-align: center;
+}
+
+.export-section h3 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.export-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-export {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+}
+
+.btn-export:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(79, 172, 254, 0.4);
+}
+
+@media print {
+    .export-section,
+    .page-header .subtitle {
+        display: none;
+    }
+}
+</style>
+
+<script>
+function exportReport(format) {
+    alert(`Exporting report as ${format.toUpperCase()}...`);
+    // This would typically trigger a server-side export
+}
+</script>
+{% endblock %}

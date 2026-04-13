@@ -1,0 +1,810 @@
+{% extends "base.html" %}
+
+{% block title %}Donations - SFU Food Pantry Management{% endblock %}
+
+{% block content %}
+<div class="donations-page">
+    <div class="page-header">
+        <h1>Donation Management</h1>
+        <p class="subtitle">Record and track donations from donors</p>
+    </div>
+
+    <div class="content-grid">
+        <!-- Add New Donation Form -->
+        <div class="form-section">
+            <h2>Record New Donation</h2>
+            <form method="POST" action="{{ url_for('add_donation') }}" class="donation-form">
+                <div class="form-group">
+                    <label for="donor_id">Donor *</label>
+                    <div class="input-group">
+                        <select id="donor_id" name="donor_id" required class="form-control">
+                            <option value="">-- Select Donor --</option>
+                            {% for donor in donors %}
+                            <option value="{{ donor.DonorID }}">{{ donor.Name }}</option>
+                            {% endfor %}
+                            <option value="new">+ Add New Donor</option>
+                        </select>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="newDonorBtn" onclick="showNewDonorModal()" style="display:none;">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" class="form-control" rows="4" placeholder="Any additional notes about this donation..."></textarea>
+                </div>
+
+                <div class="form-section-inner">
+                    <h3>Donation Items</h3>
+                    <div id="itemsContainer">
+                        <div class="item-row">
+                            <div class="form-group">
+                                <label>Food Item *</label>
+                                <div class="input-group">
+                                    <select name="items[]" required class="form-control item-select">
+                                        <option value="">-- Select Item --</option>
+                                        {% for item in items %}
+                                        <option value="{{ item.ItemID }}">{{ item.Name }}</option>
+                                        {% endfor %}
+                                        <option value="new">+ Add New Item</option>
+                                    </select>
+                                    <button type="button" class="btn btn-sm btn-outline-primary newItemBtn" onclick="showNewItemModal(this)" style="display:none;">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Quantity *</label>
+                                <input type="number" name="quantities[]" min="1" required class="form-control" placeholder="0">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Expiry Date</label>
+                                <input type="date" name="expiry_dates[]" class="form-control" style="display: block; width: 100%;">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Storage Location</label>
+                                <input type="text" name="storage_locations[]" class="form-control" placeholder="e.g., Shelf A, Freezer, etc.">
+                            </div>
+
+                            <button type="button" class="btn btn-remove" onclick="removeItemRow(this)" style="display:none;">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-secondary" onclick="addItemRow()">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save"></i> Record Donation
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- New Donor Modal -->
+        <div id="newDonorModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add New Donor</h3>
+                    <button type="button" class="close" onclick="closeNewDonorModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="newDonorForm">
+                        <div class="form-group">
+                            <label for="newDonorName">Donor Name *</label>
+                            <input type="text" id="newDonorName" name="name" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newDonorType">Donor Type *</label>
+                            <select id="newDonorType" name="donor_type" class="form-control" required>
+                                <option value="">-- Select Type --</option>
+                                <option value="Individual">Individual</option>
+                                <option value="Retail">Retail Store</option>
+                                <option value="Farm">Farm</option>
+                                <option value="Organization">Organization</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="newDonorEmail">Email</label>
+                            <input type="email" id="newDonorEmail" name="email" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="newDonorPhone">Phone</label>
+                            <input type="tel" id="newDonorPhone" name="phone" class="form-control">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeNewDonorModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveNewDonor()">Save Donor</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Food Item Modal -->
+        <div id="newItemModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add New Food Item</h3>
+                    <button type="button" class="close" onclick="closeNewItemModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="newItemForm">
+                        <div class="form-group">
+                            <label for="newItemName">Item Name *</label>
+                            <input type="text" id="newItemName" name="name" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newItemCategory">Category *</label>
+                            <div class="input-group">
+                                <select id="newItemCategory" name="category_id" class="form-control" required>
+                                    <option value="">-- Select Category --</option>
+                                    {% for category in categories %}
+                                    <option value="{{ category.CategoryID }}">{{ category.Name }}</option>
+                                    {% endfor %}
+                                    <option value="new">+ Add New Category</option>
+                                </select>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="newCategoryBtn" onclick="showNewCategoryModal()" style="display:none;">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="newItemThreshold">Reorder Threshold</label>
+                            <input type="number" id="newItemThreshold" name="reorder_threshold" class="form-control" value="10" min="1">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeNewItemModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveNewItem()">Save Item</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Category Modal -->
+        <div id="newCategoryModal" class="modal" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add New Category</h3>
+                    <button type="button" class="close" onclick="closeNewCategoryModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="newCategoryForm">
+                        <div class="form-group">
+                            <label for="newCategoryName">Category Name *</label>
+                            <input type="text" id="newCategoryName" name="name" class="form-control" required placeholder="e.g., Grains, Proteins, etc.">
+                        </div>
+                        <div class="form-group">
+                            <label for="newCategoryDescription">Description</label>
+                            <textarea id="newCategoryDescription" name="description" class="form-control" rows="3" placeholder="Optional description"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="newCategoryEssential">
+                                <input type="checkbox" id="newCategoryEssential" name="is_essential" value="1"> Mark as Essential Item
+                            </label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeNewCategoryModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveNewCategory()">Save Category</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Donations List -->
+        <div class="list-section">
+            <h2>Donation History</h2>
+            
+            {% if donations %}
+            <div class="donations-list">
+                {% for donation in donations %}
+                <div class="donation-card">
+                    <div class="donation-header">
+                        <div class="donation-info">
+                            <h3>Donation ID: #{{ donation.DonationID }}</h3>
+                            <p class="donor-name">
+                                <i class="fas fa-user"></i>
+                                <strong>{{ donation.DonorName }}</strong>
+                                <span class="donor-type">({{ donation.DonorType }})</span>
+                            </p>
+                        </div>
+                        <div class="donation-date">
+                            <i class="fas fa-calendar-alt"></i>
+                            {{ donation.DonatedAt.strftime('%B %d, %Y at %H:%M') }}
+                        </div>
+                    </div>
+
+                    {% if donation.Notes %}
+                    <div class="donation-notes">
+                        <strong>Notes:</strong> {{ donation.Notes }}
+                    </div>
+                    {% endif %}
+
+                    <div class="donation-items-summary">
+                        <span class="badge">{{ donation.ItemCount }} {{ 'item' if donation.ItemCount == 1 else 'items' }}</span>
+                    </div>
+
+                    <button class="btn-expand" onclick="toggleDonationDetails({{ donation.DonationID }})">
+                        <i class="fas fa-chevron-down"></i> View Items
+                    </button>
+
+                    <div class="donation-details" id="donation-{{ donation.DonationID }}" style="display:none;">
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Quantity</th>
+                                    <th>Expiry Date</th>
+                                    <th>Recorded By</th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-{{ donation.DonationID }}">
+                                <tr><td colspan="4" class="loading">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <h3>No donations recorded yet</h3>
+                <p>Start by recording your first donation above.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.donations-page {
+    padding: 30px 0;
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+}
+
+@media (max-width: 1024px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-section, .list-section {
+    background: white;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.form-section h2, .list-section h2 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-family: inherit;
+    transition: border-color 0.3s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-section-inner {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    margin-top: 30px;
+}
+
+.form-section-inner h3 {
+    color: #2c3e50;
+    margin-top: 0;
+    margin-bottom: 20px;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    gap: 15px;
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+    align-items: flex-end;
+}
+
+.item-row .btn-remove {
+    background: #f8d7da;
+    color: #721c24;
+    border: none;
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.item-row .btn-remove:hover {
+    background: #f5c6cb;
+}
+
+.form-actions {
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background: #d0d0d0;
+}
+
+.btn-lg {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    width: 100%;
+}
+
+.donations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.donation-card {
+    background: #f8f9fa;
+    border-left: 5px solid #667eea;
+    border-radius: 8px;
+    padding: 20px;
+    transition: all 0.3s;
+}
+
+.donation-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.donation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.donation-info h3 {
+    margin: 0 0 8px 0;
+    color: #2c3e50;
+}
+
+.donor-name {
+    margin: 0;
+    color: #555;
+}
+
+.donor-type {
+    background: #e7f3ff;
+    color: #0066cc;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    margin-left: 8px;
+}
+
+.donation-date {
+    text-align: right;
+    color: #7f8c8d;
+    font-size: 0.95rem;
+}
+
+.donation-notes {
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    border-left: 3px solid #ffc107;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.donation-items-summary {
+    margin-bottom: 10px;
+}
+
+.badge {
+    display: inline-block;
+    background: #667eea;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.btn-expand {
+    background: white;
+    color: #667eea;
+    border: 1px solid #667eea;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-expand:hover {
+    background: #667eea;
+    color: white;
+}
+
+.donation-details {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #ddd;
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.items-table thead {
+    background: white;
+    border-bottom: 2px solid #ddd;
+}
+
+.items-table th {
+    padding: 12px;
+    text-align: left;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.items-table td {
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    color: #555;
+}
+
+.items-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #95a5a6;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: #bdc3c7;
+    margin-bottom: 15px;
+}
+
+.empty-state h3 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.loading {
+    text-align: center;
+    color: #999;
+    font-style: italic;
+}
+</style>
+
+<script>
+function addItemRow() {
+    const itemsContainer = document.getElementById('itemsContainer');
+    const newRow = document.createElement('div');
+    newRow.className = 'item-row';
+    
+    const itemCount = itemsContainer.querySelectorAll('.item-row').length;
+    
+    newRow.innerHTML = `
+        <div class="form-group">
+            <label>Food Item *</label>
+            <select name="items[]" required class="form-control item-select">
+                <option value="">-- Select Item --</option>
+                {% for item in items %}
+                <option value="{{ item.ItemID }}">{{ item.Name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>Quantity *</label>
+            <input type="number" name="quantities[]" min="1" required class="form-control" placeholder="0">
+        </div>
+
+        <div class="form-group">
+            <label>Expiry Date</label>
+            <input type="date" name="expiry_dates[]" class="form-control">
+        </div>
+
+        <button type="button" class="btn-remove" onclick="removeItemRow(this)">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    
+    itemsContainer.appendChild(newRow);
+    updateRemoveButtons();
+}
+
+function removeItemRow(btn) {
+    btn.parentElement.remove();
+    updateRemoveButtons();
+}
+
+function updateRemoveButtons() {
+    const rows = document.querySelectorAll('.item-row');
+    rows.forEach((row, index) => {
+        const removeBtn = row.querySelector('.btn-remove');
+        removeBtn.style.display = rows.length > 1 ? 'block' : 'none';
+    });
+}
+
+function toggleDonationDetails(donationId) {
+    const detailsDiv = document.getElementById(`donation-${donationId}`);
+    const itemsBody = document.getElementById(`items-${donationId}`);
+    
+    if (detailsDiv.style.display === 'none') {
+        // Load items if not already loaded
+        if (itemsBody.querySelector('.loading')) {
+            fetch(`/api/donation/${donationId}`)
+                .then(response => response.json())
+                .then(items => {
+                    itemsBody.innerHTML = items.map(item => `
+                        <tr>
+                            <td>${item.ItemName}</td>
+                            <td>${item.QtyDonated}</td>
+                            <td>${item.ExpiryDate || 'No expiry'}</td>
+                            <td>${item.RecordedBy}</td>
+                        </tr>
+                    `).join('');
+                });
+        }
+        detailsDiv.style.display = 'block';
+    } else {
+        detailsDiv.style.display = 'none';
+    }
+}
+
+// New Donor Modal Functions
+function showNewDonorModal() {
+    document.getElementById('newDonorModal').style.display = 'block';
+}
+
+function closeNewDonorModal() {
+    document.getElementById('newDonorModal').style.display = 'none';
+    document.getElementById('newDonorForm').reset();
+}
+
+function saveNewDonor() {
+    const form = document.getElementById('newDonorForm');
+    const formData = new FormData(form);
+    
+    fetch('{{ url_for("add_donor") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add to dropdown
+            const option = document.createElement('option');
+            option.value = data.donor_id;
+            option.text = data.name;
+            document.getElementById('donor_id').appendChild(option);
+            document.getElementById('donor_id').value = data.donor_id;
+            closeNewDonorModal();
+            alert('Donor added successfully!');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding donor');
+    });
+}
+
+// New Food Item Modal Functions
+function showNewItemModal(btn) {
+    document.getElementById('newItemModal').style.display = 'block';
+    btn.dataset.container = btn.closest('.item-row');
+}
+
+function closeNewItemModal() {
+    document.getElementById('newItemModal').style.display = 'none';
+    document.getElementById('newItemForm').reset();
+}
+
+function saveNewItem() {
+    const form = document.getElementById('newItemForm');
+    const formData = new FormData(form);
+    const activeSelect = document.activeElement && document.activeElement.classList.contains('item-select') 
+        ? document.activeElement 
+        : document.querySelector('.item-select');
+    
+    fetch('{{ url_for("add_food_item") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add to all item dropdowns
+            document.querySelectorAll('.item-select').forEach(select => {
+                // Check if option already exists
+                const exists = Array.from(select.options).some(opt => opt.value == data.item_id);
+                if (!exists) {
+                    const option = document.createElement('option');
+                    option.value = data.item_id;
+                    option.text = data.name;
+                    // Insert before the "Add New" option
+                    const lastOption = select.lastElementChild;
+                    if (lastOption && lastOption.value === 'new') {
+                        select.insertBefore(option, lastOption);
+                    } else {
+                        select.appendChild(option);
+                    }
+                }
+            });
+            
+            // Set the value in the active/last dropdown
+            if (activeSelect) {
+                activeSelect.value = data.item_id;
+            }
+            
+            closeNewItemModal();
+            alert('Food item added successfully!');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding food item');
+    });
+}
+
+// New Category Modal Functions
+function showNewCategoryModal() {
+    document.getElementById('newCategoryModal').style.display = 'block';
+}
+
+function closeNewCategoryModal() {
+    document.getElementById('newCategoryModal').style.display = 'none';
+    document.getElementById('newCategoryForm').reset();
+}
+
+function saveNewCategory() {
+    const form = document.getElementById('newCategoryForm');
+    const formData = new FormData(form);
+    
+    fetch('{{ url_for("add_category") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Add to category dropdown in item form
+            const categorySelect = document.getElementById('newItemCategory');
+            const option = document.createElement('option');
+            option.value = data.category_id;
+            option.text = data.name;
+            
+            // Insert before the "Add New" option
+            const newOption = categorySelect.querySelector('option[value="new"]');
+            if (newOption) {
+                categorySelect.insertBefore(option, newOption);
+            } else {
+                categorySelect.appendChild(option);
+            }
+            
+            // Select the new category
+            categorySelect.value = data.category_id;
+            
+            closeNewCategoryModal();
+            alert('Category added successfully!');
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding category');
+    });
+}
+
+// Handle dropdown changes
+document.addEventListener('change', function(e) {
+    if (e.target.id === 'donor_id' && e.target.value === 'new') {
+        e.target.value = '';
+        showNewDonorModal();
+    }
+    
+    if (e.target.classList.contains('item-select') && e.target.value === 'new') {
+        e.target.value = '';
+        showNewItemModal(e.target);
+    }
+    
+    if (e.target.id === 'newItemCategory' && e.target.value === 'new') {
+        e.target.value = '';
+        showNewCategoryModal();
+    }
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateRemoveButtons();
+});
+</script>
+{% endblock %}

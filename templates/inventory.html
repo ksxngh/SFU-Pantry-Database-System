@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory - SFU Food Pantry Management{% endblock %}
+
+{% block content %}
+<div class="inventory-page">
+    <div class="page-header">
+        <h1>Inventory Management</h1>
+        <p class="subtitle">Monitor and manage food items and batches</p>
+    </div>
+
+    {% if low_stock %}
+    <div class="alert-box alert-warning">
+        <div class="alert-icon">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="alert-content">
+            <strong>Alert:</strong> {{ low_stock|length }} items are below reorder threshold
+            <button class="btn-small" onclick="this.parentElement.parentElement.style.display='none';">Dismiss</button>
+        </div>
+    </div>
+
+    <div class="low-stock-section">
+        <h2>Items Needing Reorder</h2>
+        <div class="low-stock-table">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Reorder Threshold</th>
+                        <th>Current Quantity</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in low_stock %}
+                    <tr>
+                        <td>{{ item.Name }}</td>
+                        <td>{{ item.ReorderThreshold }}</td>
+                        <td>
+                            <span class="qty-badge qty-low">
+                                {{ item.TotalQty or 0 }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge status-danger">Out of Stock</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="inventory-section">
+        <div class="section-header">
+            <h2>Current Inventory</h2>
+            <div class="filter-controls">
+                <input type="text" id="searchInput" placeholder="Search items..." class="search-box">
+            </div>
+        </div>
+
+        {% if items %}
+        <div class="table-responsive">
+            <table class="data-table inventory-table" id="inventoryTable">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Category</th>
+                        <th>Batch</th>
+                        <th>Qty Available</th>
+                        <th>Qty Received</th>
+                        <th>Storage Location</th>
+                        <th>Received Date</th>
+                        <th>Expiry Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr class="inventory-row" data-item="{{ item.ItemName.lower() }}">
+                        <td>
+                            <strong>{{ item.ItemName }}</strong>
+                        </td>
+                        <td>
+                            <span class="category-badge">{{ item.Category }}</span>
+                        </td>
+                        <td class="text-center">{{ item.BatchNo }}</td>
+                        <td>
+                            <span class="qty-badge {% if item.QtyAvailable <= 10 %}qty-low{% elif item.QtyAvailable <= 20 %}qty-medium{% else %}qty-high{% endif %}">
+                                {{ item.QtyAvailable }}
+                            </span>
+                        </td>
+                        <td class="text-center">{{ item.QtyReceived }}</td>
+                        <td>
+                            <span class="location-badge">{{ item.StorageLocation }}</span>
+                        </td>
+                        <td>{{ item.ReceivedAt.strftime('%Y-%m-%d') if item.ReceivedAt else 'N/A' }}</td>
+                        <td>
+                            {% if item.ExpiryDate %}
+                                {% set days_until = (item.ExpiryDate - datetime.now().date()).days if item.ExpiryDate > datetime.now().date() else 0 %}
+                                <span class="expiry-badge {% if days_until < 0 %}expired{% elif days_until <= 7 %}expiring-soon{% else %}valid{% endif %}">
+                                    {{ item.ExpiryDate.strftime('%Y-%m-%d') }}
+                                    {% if days_until < 0 %}
+                                        <small>(Expired)</small>
+                                    {% elif days_until == 0 %}
+                                        <small>(Today)</small>
+                                    {% elif days_until <= 7 %}
+                                        <small>({{ days_until }}d)</small>
+                                    {% endif %}
+                                </span>
+                            {% else %}
+                                <span class="expiry-badge no-expiry">No expiry</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.QtyAvailable <= 0 %}
+                                <span class="status-badge status-danger">Out</span>
+                            {% elif item.ExpiryDate and item.ExpiryDate <= datetime.now().date() %}
+                                <span class="status-badge status-danger">Expired</span>
+                            {% elif item.ExpiryDate and item.ExpiryDate <= (datetime.now().date() + timedelta(days=7)) %}
+                                <span class="status-badge status-warning">Expiring</span>
+                            {% else %}
+                                <span class="status-badge status-success">Available</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-summary">
+            <p>Showing <strong id="visibleCount">{{ items|length }}</strong> of <strong>{{ items|length }}</strong> items</p>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h3>No inventory items found</h3>
+            <p>Start by recording donations to populate the inventory.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.inventory-page {
+    padding: 30px 0;
+}
+
+.alert-box {
+    display: flex;
+    align-items: center;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 15px 20px;
+    margin-bottom: 25px;
+    animation: slideDown 0.3s ease-out;
+}
+
+.alert-box.alert-warning {
+    background: #fff3cd;
+    border-color: #ffc107;
+}
+
+.alert-icon {
+    font-size: 1.5rem;
+    color: #ff6b6b;
+    margin-right: 15px;
+}
+
+.alert-content {
+    flex: 1;
+    color: #856404;
+}
+
+.btn-small {
+    background: none;
+    border: none;
+    color: #856404;
+    cursor: pointer;
+    font-weight: bold;
+    margin-left: auto;
+}
+
+.low-stock-section {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.low-stock-section h2 {
+    color: #2c3e50;
+    margin-top: 0;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.section-header h2 {
+    color: #2c3e50;
+    margin: 0;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 10px;
+}
+
+.search-box {
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    width: 300px;
+    font-size: 1rem;
+}
+
+.inventory-section {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.table-responsive {
+    overflow-x: auto;
+    margin-bottom: 20px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.data-table thead {
+    background: #f8f9fa;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.data-table th {
+    padding: 15px;
+    text-align: left;
+    font-weight: 600;
+    color: #2c3e50;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 15px;
+    border-bottom: 1px solid #dee2e6;
+    color: #555;
+}
+
+.data-table tbody tr {
+    transition: background-color 0.2s;
+}
+
+.data-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.qty-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.qty-high {
+    background: #d4edda;
+    color: #155724;
+}
+
+.qty-medium {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.qty-low {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.category-badge {
+    display: inline-block;
+    background: #e7f3ff;
+    color: #0066cc;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.location-badge {
+    display: inline-block;
+    background: #f0f0f0;
+    color: #333;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.expiry-badge {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.expiry-badge.valid {
+    background: #d4edda;
+    color: #155724;
+}
+
+.expiry-badge.expiring-soon {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.expiry-badge.expired {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.expiry-badge.no-expiry {
+    background: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-warning {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-danger {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.table-summary {
+    text-align: right;
+    padding-top: 15px;
+    color: #7f8c8d;
+    font-size: 0.95rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #95a5a6;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: #bdc3c7;
+    margin-bottom: 20px;
+}
+
+.empty-state h3 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+</style>
+
+<script>
+$(document).ready(function() {
+    // Search functionality
+    $('#searchInput').on('keyup', function() {
+        var searchTerm = $(this).val().toLowerCase();
+        var visibleRows = 0;
+        
+        $('.inventory-row').each(function() {
+            var itemName = $(this).data('item');
+            if (itemName.includes(searchTerm) || searchTerm === '') {
+                $(this).show();
+                visibleRows++;
+            } else {
+                $(this).hide();
+            }
+        });
+        
+        $('#visibleCount').text(visibleRows);
+    });
+});
+</script>
+{% endblock %}
