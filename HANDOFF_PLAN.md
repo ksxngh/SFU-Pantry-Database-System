@@ -244,7 +244,7 @@ The SFU Food Pantry Database System is a web-based application that manages:
 
 ---
 
-## 10. Success Metrics & Evaluation
+## 8 Success Metrics & Evaluation
 
 ### System Usage Metrics
 - Daily active users
