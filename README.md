@@ -191,10 +191,9 @@ All required query types are implemented in the application:
 ## Running Demos
 
 ### Application Demo
-
-
+https://www.youtube.com/watch?v=QdSAeopPFVs
 ### Query Demo
-
+https://www.youtube.com/watch?v=P6vkmbFHmhM
 ---
 
 
