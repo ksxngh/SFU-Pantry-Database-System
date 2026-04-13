@@ -194,6 +194,8 @@ All required query types are implemented in the application:
 https://www.youtube.com/watch?v=QdSAeopPFVs
 ### Query Demo
 https://www.youtube.com/watch?v=P6vkmbFHmhM
+### Collaboration Demo( in Service-Learning)
+https://www.youtube.com/watch?v=1yz1P1urIhI
 ---
 
 
